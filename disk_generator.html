@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TT모터 회전원판 생성기 — 4절링크 수업용</title>
+<style>
+  @import url("https://cdn.jsdelivr.net/gh/fonts-archive/Paperlogy/subsets/Paperlogy-dynamic-subset.css");
+
+  :root {
+    --sidebar: #0878b7;
+    --sidebar-dark: #0368a3;
+    --canvas: #0579ba;
+    --canvas-dark: #036aa5;
+    --grid-minor: rgba(255,255,255,0.08);
+    --grid-major: rgba(255,255,255,0.18);
+    --line: #e8f8ff;
+    --line-soft: rgba(232,248,255,0.62);
+    --text: #ffffff;
+    --muted: rgba(255,255,255,0.66);
+    --faint: rgba(255,255,255,0.36);
+    --selected: #ffffff;
+    --selected-text: #0579ba;
+    --warning-bg: rgba(255, 224, 130, 0.18);
+    --warning-border: rgba(255, 224, 130, 0.72);
+    --warning-text: #fff1a8;
+    --grid-step: 20px;       /* 5mm */
+    --grid-major-step: 100px; /* 25mm */
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: "Paperlogy", -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    background: var(--canvas);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 0;
+    line-height: 1.5;
+    overflow: hidden;
+  }
+
+  .container {
+    display: grid;
+    grid-template-columns: 470px minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    width: 100%;
+    height: 100vh;
+    margin: 0;
+  }
+
+  header {
+    grid-column: 1;
+    grid-row: 1;
+    background: var(--sidebar);
+    padding: 20px 20px 22px;
+    border-right: 4px solid rgba(255,255,255,0.86);
+    border-bottom: 1px solid rgba(255,255,255,0.18);
+  }
+
+  header h1 {
+    max-width: 410px;
+    font-family: "Paperlogy", Impact, "Arial Black", sans-serif;
+    font-size: 3.55rem;
+    font-weight: 900;
+    letter-spacing: 0;
+    line-height: 0.92;
+    margin-bottom: 16px;
+    text-transform: uppercase;
+  }
+
+  header p {
+    color: var(--muted);
+    font-size: 0.82rem;
+    font-weight: 600;
+  }
+
+  .layout {
+    display: contents;
+  }
+
+  .panel {
+    grid-column: 1;
+    grid-row: 2;
+    min-height: 0;
+    overflow-y: auto;
+    background: var(--sidebar);
+    border: 0;
+    border-right: 4px solid rgba(255,255,255,0.86);
+    border-radius: 0;
+    padding: 0 18px 18px;
+    scrollbar-color: rgba(255,255,255,0.62) rgba(0,0,0,0.18);
+  }
+
+  .panel h2 {
+    font-size: 0.98rem;
+    font-weight: 700;
+    margin-bottom: 18px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .panel h2::before {
+    content: "";
+    width: 4px;
+    height: 18px;
+    background: var(--text);
+    border-radius: 0;
+  }
+
+  .field {
+    margin-bottom: 15px;
+  }
+
+  .field label {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: var(--text);
+  }
+
+  .field .hint {
+    font-size: 0.73rem;
+    color: var(--muted);
+    margin-top: 5px;
+  }
+
+  .field input[type="number"] {
+    width: 100%;
+    height: 32px;
+    padding: 0 10px;
+    font-size: 0.84rem;
+    border: 1px solid rgba(255,255,255,0.42);
+    border-radius: 0;
+    background: rgba(0,76,123,0.18);
+    color: var(--text);
+    font-family: inherit;
+    transition: border-color 0.12s, box-shadow 0.12s;
+  }
+
+  .field input[type="number"]:focus {
+    outline: none;
+    border-color: #fff;
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.16);
+  }
+
+  .radio-group {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .radio-option,
+  .distance-option {
+    position: relative;
+  }
+
+  .radio-option input,
+  .distance-option input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .radio-option label {
+    display: block;
+    min-height: 31px;
+    padding: 5px 10px;
+    text-align: center;
+    border: 1px solid rgba(255,255,255,0.82);
+    border-radius: 14px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 700;
+    background: transparent;
+    color: var(--text);
+    margin: 0;
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
+  }
+
+  .radio-option input:checked + label {
+    background: var(--selected);
+    color: var(--selected-text);
+    border-color: var(--selected);
+  }
+
+  .checkbox-option {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-height: 34px;
+    padding: 6px 10px;
+    border: 1px solid rgba(255,255,255,0.42);
+    border-radius: 0;
+    background: rgba(0,76,123,0.18);
+  }
+
+  .checkbox-option input {
+    width: 1rem;
+    height: 1rem;
+    accent-color: #fff;
+  }
+
+  .checkbox-option label {
+    margin: 0;
+    cursor: pointer;
+  }
+
+  .pin-settings {
+    border-top: 1px solid rgba(255,255,255,0.22);
+    margin-top: 14px;
+    padding-top: 16px;
+  }
+
+  .pin-settings.disabled {
+    opacity: 0.46;
+  }
+
+  .pin-settings.disabled label,
+  .pin-settings.disabled input {
+    cursor: not-allowed;
+  }
+
+  .distance-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  .distance-option label {
+    display: block;
+    min-width: 66px;
+    padding: 6px 8px;
+    text-align: center;
+    border: 1px solid rgba(255,255,255,0.7);
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 700;
+    background: transparent;
+    color: var(--text);
+  }
+
+  .distance-option input:checked + label {
+    background: var(--selected);
+    color: var(--selected-text);
+    border-color: var(--selected);
+  }
+
+  .actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 18px;
+  }
+
+  button {
+    flex: 1;
+    min-height: 32px;
+    padding: 0 12px;
+    border: 1px solid rgba(255,255,255,0.86);
+    border-radius: 15px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.8rem;
+    font-weight: 700;
+    transition: background 0.12s, border-color 0.12s;
+  }
+
+  .btn-primary {
+    background: #fff;
+    color: var(--selected-text);
+  }
+
+  .btn-primary:hover { background: rgba(255,255,255,0.84); }
+
+  .btn-secondary {
+    background: transparent;
+    color: #fff;
+  }
+
+  .btn-secondary:hover { background: rgba(255,255,255,0.14); }
+
+  .preview-wrap {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    position: relative;
+  }
+
+  .preview-area {
+    background:
+      repeating-linear-gradient(0deg, var(--grid-minor) 0 1px, transparent 1px var(--grid-step)),
+      repeating-linear-gradient(90deg, var(--grid-minor) 0 1px, transparent 1px var(--grid-step)),
+      repeating-linear-gradient(0deg, transparent 0 calc(var(--grid-major-step) - 1px), var(--grid-major) calc(var(--grid-major-step) - 1px) var(--grid-major-step)),
+      repeating-linear-gradient(90deg, transparent 0 calc(var(--grid-major-step) - 1px), var(--grid-major) calc(var(--grid-major-step) - 1px) var(--grid-major-step)),
+      var(--canvas);
+    background-position: center center;
+    border: 0;
+    border-radius: 0;
+    padding: 24px;
+    flex: 1;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .preview-area::before {
+    content: "* TT MOTOR DISK SVG WORKBENCH";
+    position: absolute;
+    top: 18px;
+    right: 22px;
+    color: rgba(255,255,255,0.92);
+    font-family: "Paperlogy", Consolas, "Courier New", monospace;
+    font-size: 1.42rem;
+    font-weight: 400;
+    letter-spacing: 0.04em;
+  }
+
+  .preview-area svg {
+    max-width: 100%;
+    max-height: 76vh;
+    height: auto;
+    filter: drop-shadow(0 0 6px rgba(255,255,255,0.18));
+  }
+
+  .info-strip {
+    position: absolute;
+    left: 18px;
+    right: 18px;
+    bottom: 14px;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(120px, 1fr));
+    gap: 0;
+    margin-top: 0;
+    background: rgba(3,95,150,0.72);
+    border: 1px solid rgba(255,255,255,0.28);
+    border-radius: 0;
+    font-size: 0.75rem;
+    overflow: hidden;
+    backdrop-filter: blur(2px);
+  }
+
+  .info-strip .item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 10px 12px;
+    border-right: 1px solid rgba(255,255,255,0.18);
+  }
+
+  .info-strip .item:last-child {
+    border-right: 0;
+  }
+
+  .info-strip .label {
+    color: var(--muted);
+    font-size: 0.66rem;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .info-strip .value {
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  .warning {
+    background: var(--warning-bg);
+    border: 1px solid var(--warning-border);
+    color: var(--warning-text);
+    padding: 9px 10px;
+    border-radius: 0;
+    font-size: 0.82rem;
+    margin-top: 12px;
+    display: none;
+  }
+
+  .warning.show { display: block; }
+
+  footer {
+    margin-top: 18px;
+    color: var(--muted);
+    font-size: 0.76rem;
+    font-family: "Paperlogy", Consolas, "Courier New", monospace;
+  }
+
+  .cut-line {
+    fill: none;
+    stroke: var(--line);
+    stroke-width: 0.7;
+  }
+
+  .dim-line {
+    stroke: var(--line-soft);
+    stroke-width: 0.4;
+    fill: none;
+    stroke-dasharray: 3 2;
+  }
+
+  .shape-hit-area {
+    fill: transparent;
+    stroke: none;
+    pointer-events: all;
+  }
+
+  .outline-hit-area {
+    fill: none;
+    stroke: transparent;
+    stroke-width: 6;
+    pointer-events: stroke;
+  }
+
+  .svg-tooltip {
+    opacity: 0;
+    transition: opacity 0.18s ease;
+    pointer-events: none;
+  }
+
+  .hover-measure-group:hover .svg-tooltip {
+    opacity: 1;
+  }
+
+  .tooltip-box {
+    fill: rgba(3, 95, 150, 0.86);
+    stroke: rgba(255,255,255,0.48);
+    stroke-width: 0.35;
+  }
+
+  .tooltip-text {
+    fill: var(--line);
+    font-size: 4px;
+    font-family: "Paperlogy", Consolas, "Courier New", monospace;
+    font-weight: 700;
+  }
+
+  .dim-text {
+    font-size: 4px;
+    fill: var(--line-soft);
+    font-family: "Paperlogy", Consolas, "Courier New", monospace;
+    font-weight: 500;
+  }
+
+  @media (max-width: 860px) {
+    body { overflow: auto; }
+
+    .container {
+      display: block;
+      height: auto;
+      min-height: 100vh;
+    }
+
+    header,
+    .panel {
+      border-right: 0;
+    }
+
+    .panel {
+      overflow: visible;
+    }
+
+    .preview-wrap {
+      min-height: 560px;
+    }
+
+    .preview-area {
+      min-height: 560px;
+    }
+
+    .preview-area::before {
+      left: 14px;
+      right: auto;
+      font-size: 0.9rem;
+    }
+
+    .info-strip {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .info-strip .item:nth-child(2n) {
+      border-right: 0;
+    }
+  }
+
+  @media (max-width: 520px) {
+    header h1 {
+      font-size: 2.55rem;
+    }
+
+    .radio-group,
+    .actions {
+      grid-template-columns: 1fr;
+      flex-direction: column;
+    }
+
+    .info-strip {
+      position: static;
+      grid-template-columns: 1fr;
+    }
+
+    .info-strip .item {
+      border-right: 0;
+      border-bottom: 1px solid rgba(255,255,255,0.18);
+    }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>DISK GENERATOR</h1>
+    <p>TT모터 회전원판 · 레이저 커터 SVG 도면 생성</p>
+  </header>
+
+  <div class="layout">
+
+    <!-- 왼쪽: 입력 패널 -->
+    <div class="panel">
+      <h2>설정값 입력</h2>
+
+      <div class="field">
+        <label for="diameter">원판 지름 (mm)</label>
+        <input type="number" id="diameter" value="50" min="20" max="150" step="1">
+        <div class="hint">권장: 30~80mm</div>
+      </div>
+
+      <div class="field">
+        <label>MDF 두께</label>
+        <div class="radio-group">
+          <div class="radio-option">
+            <input type="radio" id="mdf3" name="mdf" value="3" checked>
+            <label for="mdf3">3 mm</label>
+          </div>
+          <div class="radio-option">
+            <input type="radio" id="mdf45" name="mdf" value="4.5">
+            <label for="mdf45">4.5 mm</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="shaft-offset">축 구멍 Offset (mm)</label>
+        <input type="number" id="shaft-offset" value="0" min="-0.5" max="1" step="0.05">
+        <div class="hint">윤곽선을 바깥쪽으로 밀 값입니다. 예: +0.10 → 5.50×3.90mm</div>
+      </div>
+
+      <div class="field">
+        <div class="checkbox-option">
+          <input type="checkbox" id="pin-enabled" checked>
+          <label for="pin-enabled">핀 구멍 생성</label>
+        </div>
+        <div class="hint">끄면 축 구멍과 외곽만 있는 원판을 만듭니다.</div>
+      </div>
+
+      <div class="pin-settings" id="pin-settings">
+      <div class="field">
+        <label>핀 연결 방식</label>
+        <div class="radio-group">
+          <div class="radio-option">
+            <input type="radio" id="m4" name="pin" value="m4" checked>
+            <label for="m4">M4 볼트</label>
+          </div>
+          <div class="radio-option">
+            <input type="radio" id="cotter" name="pin" value="cotter">
+            <label for="cotter">할핀</label>
+          </div>
+        </div>
+        <div class="hint" id="pin-hint">M4 볼트용 구멍 Ø 4.3 mm</div>
+      </div>
+
+      <div class="field">
+        <label for="rstart">첫 핀 구멍 거리 (mm)</label>
+        <input type="number" id="rstart" value="5" min="3" max="50" step="0.5">
+        <div class="hint">원판 중심에서 첫 핀 구멍까지의 거리</div>
+      </div>
+
+      <div class="field">
+        <label for="step">핀 구멍 간격 (mm)</label>
+        <input type="number" id="step" value="6" min="2" max="20" step="0.5">
+        <div class="hint">선택 가능한 중심 거리 목록을 만드는 간격</div>
+      </div>
+
+      <div class="field">
+        <label>핀 구멍 중심 거리 선택</label>
+        <div class="hint">선택한 거리의 구멍만 SVG에 포함됩니다.</div>
+        <div class="distance-options" id="pin-distance-options"></div>
+      </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn-primary" onclick="updatePreview()">미리보기 갱신</button>
+        <button class="btn-secondary" onclick="downloadSVG()">SVG 다운로드</button>
+        <button class="btn-secondary" onclick="downloadDXF()">DXF 다운로드</button>
+      </div>
+
+      <div class="warning" id="warning"></div>
+    </div>
+
+    <!-- 오른쪽: 미리보기 -->
+    <div class="preview-wrap">
+      <div class="preview-area" id="preview">
+        <!-- SVG가 여기 그려짐 -->
+      </div>
+
+      <div class="info-strip" id="info-strip">
+        <!-- 핀 구멍 정보 자동 표시 -->
+      </div>
+    </div>
+
+  </div>
+
+  <footer>
+    SVG는 빨간색 절단선으로 저장됩니다. DXF는 RDWorks용 mm 단위 R12 ASCII 도면으로 저장됩니다.
+  </footer>
+
+</div>
+
+<script>
+// ========================================
+// TT모터 사양 (고정값)
+// ========================================
+const SHAFT = {
+  diameter: 5.3,       // 축 지름 (mm)
+  flat_height: 3.7,    // 평탄면 사이 거리 (mm)
+};
+
+// 레이저 커프 (참고용 — 도면 단위는 mm)
+// CO2 레이저는 보통 한쪽 0.1mm 정도를 태워서 구멍이 그 만큼 커지고 외곽은 작아짐
+// 이 점을 감안해 "도면 치수"를 정함:
+//   - 축 구멍: 실측치 그대로 그림 → 커팅 후 살짝 커져서 끼우기 적당
+//   - M4 구멍: 4.3mm로 그림 → 커팅 후 약 4.5mm → 볼트(4mm) 여유 있게 통과
+//   - 할핀 구멍: 2.3mm로 그림 → 커팅 후 약 2.5mm → 2mm 할핀 통과
+//   - 외곽: 정확히 D로 그림 (외곽은 약간 작아져도 무방)
+const KERF = {
+  3: 0.10,    // 3mm MDF 한쪽 커프 (참고용)
+  4.5: 0.13,  // 4.5mm MDF 한쪽 커프 (참고용)
+};
+
+// 핀 종류별 구멍 지름 (mm) — 도면에 그릴 치수
+// 커팅 후 실제 구멍은 이 값 + (2 × kerf) 만큼 커지므로 여유로 통과 가능
+const PIN_HOLE = {
+  m4: 4.3,     // 도면 4.3mm → 커팅 후 ~4.5mm (M4 볼트 4mm 여유)
+  cotter: 2.3, // 도면 2.3mm → 커팅 후 ~2.5mm (2mm 할핀 여유)
+};
+
+const PIN_LABEL = {
+  m4: "M4 볼트",
+  cotter: "할핀",
+};
+
+const PREVIEW_PX_PER_MM = 4; // 5mm grid = 20px
+
+let selectedPinDistances = null;
+let lastPinOptionKey = "";
+
+// ========================================
+// 현재 입력값 읽기
+// ========================================
+function readInputs() {
+  return {
+    D: parseFloat(document.getElementById('diameter').value),
+    mdf: parseFloat(document.querySelector('input[name="mdf"]:checked').value),
+    shaftOffset: parseFloat(document.getElementById('shaft-offset').value),
+    pinEnabled: document.getElementById('pin-enabled').checked,
+    pin: document.querySelector('input[name="pin"]:checked').value,
+    rstart: parseFloat(document.getElementById('rstart').value),
+    step: parseFloat(document.getElementById('step').value),
+  };
+}
+
+// ========================================
+// 도면 데이터 계산
+// 도면 치수 = SVG에 그릴 치수 (커프는 도면 결정 시 이미 반영됨)
+// ========================================
+function computeGeometry(inp) {
+  const kerf = KERF[inp.mdf];
+  const pinHoleDia = PIN_HOLE[inp.pin];
+
+  // 도면 치수 (= 커팅 좌표):
+  //   - 외곽: 사용자가 입력한 D 그대로
+  //   - 축 구멍: 실측치 그대로 (커팅 후 자연스럽게 0.2mm 정도 여유 생김)
+  //   - 핀 구멍: PIN_HOLE 정의 그대로
+  const outerR = inp.D / 2;
+  const shaftDia = SHAFT.diameter + inp.shaftOffset * 2;
+  const flatH = SHAFT.flat_height + inp.shaftOffset * 2;
+  const pinDia = pinHoleDia;
+
+  // 핀 구멍 배치
+  // 가장자리 여백 = 핀 지름 × 1.5 (원판 깨짐 방지)
+  const margin = pinDia * 1.5;
+  const maxR = inp.D / 2 - margin;
+
+  const pinOptions = [];
+  if (inp.pinEnabled) {
+    let r = inp.rstart;
+    while (r <= maxR + 0.001) {
+      pinOptions.push(roundDistance(r));
+      r += inp.step;
+    }
+  }
+
+  const optionKey = makePinOptionKey(inp, pinOptions);
+  if (optionKey !== lastPinOptionKey) {
+    selectedPinDistances = pinOptions.slice();
+    lastPinOptionKey = optionKey;
+  }
+
+  const selectedSet = new Set((selectedPinDistances || []).map(distanceKey));
+  const pinPositions = inp.pinEnabled
+    ? pinOptions.filter(r => selectedSet.has(distanceKey(r)))
+    : [];
+
+  return {
+    inp,
+    kerf,
+    outerR,
+    shaftDia,
+    flatH,
+    pinDia,
+    pinOptions,
+    pinPositions,
+    maxR,
+  };
+}
+
+function roundDistance(value) {
+  return Math.round(value * 10) / 10;
+}
+
+function distanceKey(value) {
+  return Number(value).toFixed(1);
+}
+
+function makePinOptionKey(inp, pinOptions) {
+  return [
+    inp.D,
+    inp.pin,
+    inp.rstart,
+    inp.step,
+    pinOptions.map(distanceKey).join(","),
+  ].join("|");
+}
+
+// ========================================
+// 실제 커팅용 SVG 생성 (단위 = mm)
+// ========================================
+function buildCutSVG(g) {
+  const D = g.inp.D;
+  const padding = 5;            // 외곽 여백 (mm)
+  const viewSize = D + padding * 2;
+  const cx = viewSize / 2;
+  const cy = viewSize / 2;
+
+  // 축 구멍 path (양쪽 평탄 + 양쪽 둥근)
+  const halfW = g.shaftDia / 2;
+  const halfH = g.flatH / 2;
+  const shaftPath = makeFlatCirclePath(cx, cy, halfW, halfH);
+
+  // 핀 구멍 (수직축 위로 배치)
+  let pinCircles = '';
+  for (const r of g.pinPositions) {
+    pinCircles += `\n    <circle cx="${cx.toFixed(3)}" cy="${(cy - r).toFixed(3)}" r="${(g.pinDia / 2).toFixed(3)}" fill="none" stroke="#FF0000" stroke-width="0.1"/>`;
+  }
+
+  // 실제 커팅용 SVG: 단위 mm, viewBox와 width/height 모두 mm
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="${viewSize}mm" height="${viewSize}mm"
+     viewBox="0 0 ${viewSize} ${viewSize}">
+  <g>
+    <!-- 외곽 원 D=${g.inp.D}mm -->
+    <circle cx="${cx.toFixed(3)}" cy="${cy.toFixed(3)}" r="${g.outerR.toFixed(3)}" fill="none" stroke="#FF0000" stroke-width="0.1"/>
+    <!-- 축 구멍 (양쪽 평탄) ${g.shaftDia}×${g.flatH}mm -->
+    <path d="${shaftPath}" fill="none" stroke="#FF0000" stroke-width="0.1"/>
+    <!-- 핀 구멍 ${g.pinPositions.length}개, Ø${g.pinDia}mm -->${pinCircles}
+  </g>
+</svg>`;
+}
+
+// ========================================
+// RDWorks용 DXF 생성 (R12 ASCII, 단위 = mm)
+// 중심 좌표를 (0,0)으로 두고 내부 절단선을 먼저 배치한다.
+// ========================================
+function buildDXF(g) {
+  const entities = [];
+  const layer = 'CUT';
+
+  // 축 구멍: 위/아래 직선 + 좌/우 원호
+  const halfW = g.shaftDia / 2;
+  const halfH = g.flatH / 2;
+  const r = halfW;
+  const xEdge = Math.sqrt(r * r - halfH * halfH);
+  const angle = Math.atan2(halfH, xEdge) * 180 / Math.PI;
+
+  entities.push(dxfLine(layer, -xEdge, halfH, xEdge, halfH));
+  entities.push(dxfArc(layer, 0, 0, r, 360 - angle, angle));
+  entities.push(dxfLine(layer, xEdge, -halfH, -xEdge, -halfH));
+  entities.push(dxfArc(layer, 0, 0, r, 180 - angle, 180 + angle));
+
+  // 핀 구멍
+  for (const pinR of g.pinPositions) {
+    entities.push(dxfCircle(layer, 0, pinR, g.pinDia / 2));
+  }
+
+  // 외곽은 마지막에 둔다.
+  entities.push(dxfCircle(layer, 0, 0, g.outerR));
+
+  return [
+    '0', 'SECTION',
+    '2', 'HEADER',
+    '9', '$INSUNITS',
+    '70', '4',
+    '0', 'ENDSEC',
+    '0', 'SECTION',
+    '2', 'ENTITIES',
+    ...entities.flatMap(entity => entity.split('\n')),
+    '0', 'ENDSEC',
+    '0', 'EOF',
+    '',
+  ].join('\n');
+}
+
+function dxfNumber(value) {
+  return Number(value).toFixed(4).replace(/\.?0+$/, '');
+}
+
+function dxfCircle(layer, x, y, radius) {
+  return [
+    '0', 'CIRCLE',
+    '8', layer,
+    '10', dxfNumber(x),
+    '20', dxfNumber(y),
+    '30', '0',
+    '40', dxfNumber(radius),
+  ].join('\n');
+}
+
+function dxfLine(layer, x1, y1, x2, y2) {
+  return [
+    '0', 'LINE',
+    '8', layer,
+    '10', dxfNumber(x1),
+    '20', dxfNumber(y1),
+    '30', '0',
+    '11', dxfNumber(x2),
+    '21', dxfNumber(y2),
+    '31', '0',
+  ].join('\n');
+}
+
+function dxfArc(layer, x, y, radius, startAngle, endAngle) {
+  return [
+    '0', 'ARC',
+    '8', layer,
+    '10', dxfNumber(x),
+    '20', dxfNumber(y),
+    '30', '0',
+    '40', dxfNumber(radius),
+    '50', dxfNumber(startAngle),
+    '51', dxfNumber(endAngle),
+  ].join('\n');
+}
+
+// ========================================
+// 양쪽 평탄 형상의 SVG path 만들기
+// 가로: 평탄 방향 (halfW)
+// 세로: 평탄면 사이 (halfH)
+// 위/아래가 평탄, 좌/우가 둥근 원호
+// ========================================
+function makeFlatCirclePath(cx, cy, halfW, halfH) {
+  // 평탄면의 끝점들 계산
+  // 원의 반지름 r = halfW (가로 반지름이 원래 축 지름의 반)
+  // 평탄면이 잘려나간 위치는 y = ±halfH
+  const r = halfW;
+  // 평탄면 끝점: x = ±sqrt(r² - halfH²), y = ±halfH
+  const xEdge = Math.sqrt(r * r - halfH * halfH);
+
+  // 시작점: 오른쪽 위 (xEdge, -halfH)
+  // 1) 오른쪽 위 → 오른쪽 아래로 호 (큰 호 아님, sweep=1)
+  // 2) 직선으로 왼쪽 아래로
+  // 3) 왼쪽 아래 → 왼쪽 위로 호
+  // 4) 직선으로 시작점으로
+
+  const x1 = cx + xEdge, y1 = cy - halfH;
+  const x2 = cx + xEdge, y2 = cy + halfH;
+  const x3 = cx - xEdge, y3 = cy + halfH;
+  const x4 = cx - xEdge, y4 = cy - halfH;
+
+  return `M ${x1.toFixed(3)} ${y1.toFixed(3)} ` +
+         `A ${r.toFixed(3)} ${r.toFixed(3)} 0 0 1 ${x2.toFixed(3)} ${y2.toFixed(3)} ` +
+         `L ${x3.toFixed(3)} ${y3.toFixed(3)} ` +
+         `A ${r.toFixed(3)} ${r.toFixed(3)} 0 0 1 ${x4.toFixed(3)} ${y4.toFixed(3)} ` +
+         `Z`;
+}
+
+// ========================================
+// 미리보기용 SVG 생성 (치수선 포함)
+// ========================================
+function buildPreviewSVG(g) {
+  const D = g.inp.D;
+  // 미리보기는 라벨 공간 확보 위해 큰 viewBox 사용
+  const padding = Math.max(D * 0.55, 32);
+  const viewSize = D + padding * 2;
+  const pixelSize = viewSize * PREVIEW_PX_PER_MM;
+  const cx = viewSize / 2;
+  const cy = viewSize / 2;
+
+  const outerR = g.outerR;
+  const halfW = g.shaftDia / 2;
+  const halfH = g.flatH / 2;
+  const shaftPath = makeFlatCirclePath(cx, cy, halfW, halfH);
+
+  let pinCircles = '';
+  let pinHitAreas = '';
+  for (let i = 0; i < g.pinPositions.length; i++) {
+    const r = g.pinPositions[i];
+    pinCircles += `<circle cx="${cx}" cy="${cy - r}" r="${g.pinDia / 2}" class="cut-line"/>`;
+    pinHitAreas += `<circle cx="${cx}" cy="${cy - r}" r="${Math.max(g.pinDia / 2 + 2, 4)}" class="shape-hit-area"/>`;
+  }
+
+  const tooltipX = cx + outerR * 0.15;
+  const tooltipY = cy - outerR - 11;
+  const diskTooltip = `
+    <g class="svg-tooltip">
+      <rect x="${tooltipX}" y="${tooltipY}" width="30" height="9" rx="1" class="tooltip-box"/>
+      <text x="${tooltipX + 3}" y="${tooltipY + 6}" class="tooltip-text">Ø ${D} mm</text>
+    </g>
+  `;
+  const shaftTooltipX = cx + halfW + 4;
+  const shaftTooltipY = cy + 4;
+  const shaftTooltip = `
+    <g class="svg-tooltip">
+      <rect x="${shaftTooltipX}" y="${shaftTooltipY}" width="43" height="9" rx="1" class="tooltip-box"/>
+      <text x="${shaftTooltipX + 3}" y="${shaftTooltipY + 6}" class="tooltip-text">SHAFT ${g.shaftDia.toFixed(2)}×${g.flatH.toFixed(2)}</text>
+    </g>
+  `;
+  const pinTooltipX = cx + g.pinDia / 2 + 5;
+  const pinTooltipY = g.pinPositions.length > 0 ? cy - g.pinPositions[g.pinPositions.length - 1] - 5 : cy - outerR;
+  const pinTooltip = `
+    <g class="svg-tooltip">
+      <rect x="${pinTooltipX}" y="${pinTooltipY}" width="31" height="9" rx="1" class="tooltip-box"/>
+      <text x="${pinTooltipX + 3}" y="${pinTooltipY + 6}" class="tooltip-text">PIN Ø ${g.pinDia}</text>
+    </g>
+  `;
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${pixelSize}" height="${pixelSize}" viewBox="0 0 ${viewSize} ${viewSize}">
+    <g class="hover-measure-group">
+      <circle cx="${cx}" cy="${cy}" r="${outerR}" class="outline-hit-area"/>
+      <circle cx="${cx}" cy="${cy}" r="${outerR}" class="cut-line"/>
+      ${diskTooltip}
+    </g>
+    <g class="hover-measure-group">
+      <path d="${shaftPath}" class="shape-hit-area"/>
+      <path d="${shaftPath}" class="cut-line"/>
+      ${shaftTooltip}
+    </g>
+    <g class="hover-measure-group">
+      ${pinHitAreas}
+      ${pinCircles}
+      ${g.pinPositions.length > 0 ? pinTooltip : ''}
+    </g>
+  </svg>`;
+}
+
+// ========================================
+// 입력값 검증
+// ========================================
+function validate(inp) {
+  const errors = [];
+  const pinHole = PIN_HOLE[inp.pin];
+  const margin = pinHole * 1.5;
+  const maxR = inp.D / 2 - margin;
+
+  if (!Number.isFinite(inp.D)) {
+    errors.push("원판 지름을 숫자로 입력하세요.");
+    return errors;
+  }
+  if (!Number.isFinite(inp.shaftOffset)) {
+    errors.push("축 구멍 공차를 숫자로 입력하세요.");
+    return errors;
+  }
+  if (inp.D < 20) errors.push("원판 지름이 너무 작습니다 (최소 20mm).");
+  if (inp.D > 150) errors.push("원판 지름이 너무 큽니다 (최대 150mm).");
+  const shaftDia = SHAFT.diameter + inp.shaftOffset * 2;
+  const flatH = SHAFT.flat_height + inp.shaftOffset * 2;
+  if (shaftDia <= 0 || flatH <= 0) {
+    errors.push("축 구멍 공차가 너무 작아 치수가 0 이하가 됩니다.");
+  }
+  if (flatH >= shaftDia) {
+    errors.push("축 구멍 공차가 너무 커서 평탄면 거리가 축 지름보다 커집니다.");
+  }
+
+  if (!inp.pinEnabled) return errors;
+
+  if (!Number.isFinite(inp.rstart)) errors.push("첫 핀 구멍 거리를 숫자로 입력하세요.");
+  if (!Number.isFinite(inp.step)) errors.push("핀 구멍 간격을 숫자로 입력하세요.");
+  if (!Number.isFinite(inp.rstart) || !Number.isFinite(inp.step)) return errors;
+
+  if (inp.rstart < SHAFT.diameter / 2 + 2) {
+    errors.push(`첫 핀 구멍 거리가 축 구멍과 너무 가깝습니다 (최소 ${(SHAFT.diameter / 2 + 2).toFixed(1)}mm).`);
+  }
+  if (inp.rstart > maxR) {
+    errors.push(`첫 핀 구멍이 원판 밖으로 나갑니다 (이 원판에서 최대 거리: ${maxR.toFixed(1)}mm).`);
+  }
+  if (inp.step < pinHole + 1) {
+    errors.push(`핀 구멍 간격이 너무 좁아 구멍끼리 겹칠 수 있습니다 (최소 ${(pinHole + 1).toFixed(1)}mm).`);
+  }
+  return errors;
+}
+
+// ========================================
+// UI 갱신
+// ========================================
+function updatePreview() {
+  const inp = readInputs();
+  const errors = validate(inp);
+
+  const warningEl = document.getElementById('warning');
+  syncPinControls(inp.pinEnabled);
+  if (errors.length > 0) {
+    warningEl.textContent = "⚠ " + errors.join(" ");
+    warningEl.classList.add('show');
+    return;
+  } else {
+    warningEl.classList.remove('show');
+  }
+
+  const g = computeGeometry(inp);
+  document.getElementById('preview').innerHTML = buildPreviewSVG(g);
+  renderPinDistanceOptions(g);
+
+  // 정보 스트립 갱신
+  const info = document.getElementById('info-strip');
+  const positions = g.pinPositions.map(r => r.toFixed(1)).join(", ");
+  const pinSummary = inp.pinEnabled
+    ? `${PIN_LABEL[inp.pin]} (도면 Ø${g.pinDia}mm)`
+    : "핀 구멍 없음";
+  const pinPositionsText = inp.pinEnabled && g.pinPositions.length > 0 ? `${positions} mm` : "-";
+  const shaftText = `${g.shaftDia.toFixed(2)}×${g.flatH.toFixed(2)}mm (offset ${formatSigned(inp.shaftOffset)})`;
+  info.innerHTML = `
+    <div class="item">
+      <span class="label">원판 지름</span>
+      <span class="value">Ø ${inp.D}mm</span>
+    </div>
+    <div class="item">
+      <span class="label">축 구멍</span>
+      <span class="value">${shaftText}</span>
+    </div>
+    <div class="item">
+      <span class="label">연결 방식</span>
+      <span class="value">${pinSummary}</span>
+    </div>
+    <div class="item">
+      <span class="label">핀 구멍 개수</span>
+      <span class="value">${g.pinPositions.length}개</span>
+    </div>
+    <div class="item">
+      <span class="label">핀 구멍 거리</span>
+      <span class="value">${pinPositionsText}</span>
+    </div>
+    <div class="item">
+      <span class="label">핀 거리 / 커프</span>
+      <span class="value">${pinPositionsText} · ~${g.kerf}mm</span>
+    </div>
+  `;
+
+  // 핀 종류 힌트 갱신
+  const hint = document.getElementById('pin-hint');
+  hint.textContent = inp.pinEnabled
+    ? `${PIN_LABEL[inp.pin]}용 구멍 도면 Ø ${g.pinDia} mm`
+    : "핀 구멍 생성을 켜면 설정할 수 있습니다.";
+}
+
+function syncPinControls(pinEnabled) {
+  const pinSettings = document.getElementById('pin-settings');
+  pinSettings.classList.toggle('disabled', !pinEnabled);
+
+  pinSettings.querySelectorAll('input').forEach(el => {
+    el.disabled = !pinEnabled;
+  });
+}
+
+function formatSigned(value) {
+  const fixed = Number(value).toFixed(2);
+  return value > 0 ? `+${fixed}` : fixed;
+}
+
+function renderPinDistanceOptions(g) {
+  const wrap = document.getElementById('pin-distance-options');
+  if (!g.inp.pinEnabled) {
+    wrap.innerHTML = '<span class="hint">핀 구멍 생성이 꺼져 있습니다.</span>';
+    return;
+  }
+
+  if (g.pinOptions.length === 0) {
+    wrap.innerHTML = '<span class="hint">선택 가능한 거리가 없습니다.</span>';
+    return;
+  }
+
+  const selectedSet = new Set(g.pinPositions.map(distanceKey));
+  wrap.innerHTML = g.pinOptions.map((r, index) => {
+    const id = `pin-distance-${index}`;
+    const checked = selectedSet.has(distanceKey(r)) ? 'checked' : '';
+    return `<div class="distance-option">
+      <input type="checkbox" class="pin-distance-input" id="${id}" value="${r}" ${checked}>
+      <label for="${id}">${distanceKey(r)} mm</label>
+    </div>`;
+  }).join('');
+}
+
+// ========================================
+// SVG 파일 다운로드
+// ========================================
+function downloadSVG() {
+  const inp = readInputs();
+  const errors = validate(inp);
+  if (errors.length > 0) {
+    alert("⚠ 입력값 오류:\n\n" + errors.join("\n"));
+    return;
+  }
+
+  const g = computeGeometry(inp);
+  const svgContent = buildCutSVG(g);
+
+  const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+  const url = URL.createObjectURL(blob);
+
+  const filename = `${makeExportBasename(inp)}.svg`;
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function downloadDXF() {
+  const inp = readInputs();
+  const errors = validate(inp);
+  if (errors.length > 0) {
+    alert("⚠ 입력값 오류:\n\n" + errors.join("\n"));
+    return;
+  }
+
+  const g = computeGeometry(inp);
+  const dxfContent = buildDXF(g);
+
+  const blob = new Blob([dxfContent], { type: 'application/dxf' });
+  const url = URL.createObjectURL(blob);
+
+  const filename = `${makeExportBasename(inp)}.dxf`;
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function makeExportBasename(inp) {
+  const pinName = inp.pinEnabled ? inp.pin : 'nopin';
+  const offsetName = inp.shaftOffset === 0 ? 'off0' : `off${formatSigned(inp.shaftOffset).replace('+', 'p').replace('-', 'm')}`;
+  return `disk_D${inp.D}_${pinName}_${offsetName}_mdf${inp.mdf}`;
+}
+
+// ========================================
+// 입력값 변경 시 자동 미리보기
+// ========================================
+document.querySelectorAll('input').forEach(el => {
+  el.addEventListener('input', updatePreview);
+  el.addEventListener('change', updatePreview);
+});
+
+document.addEventListener('change', event => {
+  if (!event.target.classList.contains('pin-distance-input')) return;
+
+  selectedPinDistances = Array.from(document.querySelectorAll('.pin-distance-input:checked'))
+    .map(el => parseFloat(el.value));
+  updatePreview();
+});
+
+// 초기 미리보기
+updatePreview();
+</script>
+
+</body>
+</html>
